@@ -1,64 +1,143 @@
-from flask import Flask, request, send_file, render_template
+import os  # Import the os module
 import numpy as np
-import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
-import os
+from sklearn.metrics import mean_squared_error, r2_score
+import matplotlib
+matplotlib.use('Agg')  # Use the 'Agg' backend which is thread-safe
+import matplotlib.pyplot as plt
+from io import BytesIO
+import base64
+from flask import Flask, render_template, request
+from threading import Lock
 
 app = Flask(__name__)
+plot_lock = Lock()
 
-@app.route('/')
+def generate_data(a, num_points, noise):
+    """
+    CRISP-DM Step 3: Data Preparation
+    Generates linear data with specified slope, number of points, and noise.
+
+    Parameters:
+    - a (float): Slope of the true line.
+    - num_points (int): Number of data points to generate.
+    - noise (float): Standard deviation of the Gaussian noise.
+
+    Returns:
+    - x (np.ndarray): Independent variable values.
+    - y (np.ndarray): Dependent variable values with noise.
+    """
+    x = np.linspace(0, 10, num_points)
+    y = a * x + np.random.normal(1, noise, num_points) 
+    return x, y
+
+def perform_regression(x, y):
+    """
+    CRISP-DM Step 4: Modeling
+    Performs linear regression on the given data.
+
+    Parameters:
+    - x (np.ndarray): Independent variable values.
+    - y (np.ndarray): Dependent variable values.
+
+    Returns:
+    - slope (float): Estimated slope from regression.
+    - intercept (float): Estimated intercept from regression.
+    - mse (float): Mean Squared Error of the model.
+    - r2 (float): R-squared score of the model.
+    - y_pred (np.ndarray): Predicted y values from the model.
+    """
+    model = LinearRegression()
+    x_reshaped = x.reshape(-1, 1)
+    model.fit(x_reshaped, y)
+    y_pred = model.predict(x_reshaped)
+    mse = mean_squared_error(y, y_pred)
+    r2 = r2_score(y, y_pred)
+    return model.coef_[0], model.intercept_, mse, r2, y_pred
+
+def create_plot(x, y, y_pred, a):
+    """
+    CRISP-DM Step 5: Evaluation
+    Creates a plot of the data points, regression line, and true line.
+
+    Parameters:
+    - x (np.ndarray): Independent variable values.
+    - y (np.ndarray): Dependent variable values.
+    - y_pred (np.ndarray): Predicted y values from regression.
+    - a (float): True slope used in data generation.
+
+    Returns:
+    - plot_data (str): Base64-encoded PNG image of the plot.
+    """
+    with plot_lock:
+        plt.figure(figsize=(10, 10))
+        plt.scatter(x, y, color='blue', label='Data Points', alpha=0.6, s=10)  # Smaller points for clarity
+        plt.plot(x, y_pred, color='red', label='Regression Line', linewidth=2)
+        plt.plot(x, a*x, color='green', linestyle='--', label=f'True Line (y = {a}x)', linewidth=2)
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        plt.title('Linear Regression Result')
+        plt.legend()
+        plt.grid(True)
+
+        buffer = BytesIO()
+        plt.savefig(buffer, format='png')
+        buffer.seek(0)
+        plot_data = base64.b64encode(buffer.getvalue()).decode()
+        plt.close()
+
+        return plot_data
+
+@app.route('/', methods=['GET', 'POST'])
 def index():
+    """
+    CRISP-DM Steps:
+    - Step 1: Business Understanding
+    - Step 2: Data Understanding
+    - Steps 3-6 are handled within helper functions and this route.
+    """
+    if request.method == 'POST':
+        # Step 1: Business Understanding
+        # The objective is to generate a linear regression plot based on user inputs.
+
+        try:
+            # Step 2: Data Understanding
+            # Collect input parameters from the user
+            a = float(request.form['a'])           # Slope
+            noise = float(request.form['noise'])   # Noise level
+            num_points = int(request.form['num_points'])  # Number of data points
+
+            # Input validation
+            if num_points <= 0:
+                return render_template('index.html', error='Number of points must be a positive integer.')
+            if noise < 0:
+                return render_template('index.html', error='Noise level must be non-negative.')
+        except KeyError as e:
+            return render_template('index.html', error=f'Missing parameter: {str(e)}')
+        except ValueError:
+            return render_template('index.html', error='Invalid input. Please ensure all inputs are numeric.')
+
+        # Step 3: Data Preparation
+        x, y = generate_data(a, num_points, noise)
+
+        # Step 4: Modeling
+        slope, intercept, mse, r2, y_pred = perform_regression(x, y)
+
+        # Step 5: Evaluation
+        plot_data = create_plot(x, y, y_pred, a)
+
+        # Step 6: Deployment
+        # Render the template with the generated plot
+        return render_template('index.html', plot=plot_data)
+
+    # For GET requests, simply render the form
     return render_template('index.html')
 
-@app.route('/generate_plot', methods=['POST'])
-def generate_plot():
-    # CRISP-DM Step 1: Business Understanding
-    # In this step, we clarify the business objective of generating a linear regression model plot.
-    
-    try:
-        # CRISP-DM Step 2: Data Understanding
-        # Collect input parameters, understanding the user's requirements
-        a = float(request.form['a'])  # Slope
-        b = float(request.form['b'])  # Intercept
-        noise = float(request.form['noise'])  # Noise level
-        num_points = int(request.form['num_points'])  # Number of data points
-    except KeyError as e:
-        return {'error': f'Missing key: {str(e)}'}, 400
-
-    # CRISP-DM Step 3: Data Preparation
-    # Generate input data, using random number generation to simulate data points
-    np.random.seed(0)  # Fix random seed for reproducibility
-    x = np.random.randint(500, 1000, size=num_points)  # Random x values (independent variable)
-    
-    # Generate y values (dependent variable) with added noise
-    y = a * x + b + np.random.normal(0, noise, size=num_points)  # Linear relationship with noise
-
-    # CRISP-DM Step 4: Modeling
-    # Fit the generated data using a linear regression model
-    model = LinearRegression()
-    model.fit(x.reshape(-1, 1), y)
-
-    # CRISP-DM Step 5: Evaluation
-    # Generate the plot to evaluate the model's performance
-    plt.figure(figsize=(10, 6))
-    plt.scatter(x, y, color='blue', label='Data Points')  # Data points
-    plt.plot(x, model.predict(x.reshape(-1, 1)), color='red', label=f'Predicted Line: y = {a}x + {b}')  # Regression line
-    plt.xlabel('x (Independent Variable)')
-    plt.ylabel('y (Dependent Variable)')
-    plt.title('Linear Regression Result')
-    plt.legend()
-    
-    # Save the image
-    image_path = 'static/linear_regression_plot.png'
-    plt.savefig(image_path)
-    plt.close()
-
-    # CRISP-DM Step 6: Deployment
-    # Return the generated plot for the user to view
-    return send_file(image_path)
-
 if __name__ == '__main__':
-    # Create static folder to store images
+    # CRISP-DM Step 6: Deployment
+    # Ensure the 'static' and 'templates' directories exist
     if not os.path.exists('static'):
         os.makedirs('static')
-    app.run(debug=True)
+    if not os.path.exists('templates'):
+        os.makedirs('templates')
+    app.run(debug=True, threaded=True)
