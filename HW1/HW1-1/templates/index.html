@@ -22,7 +22,7 @@
             padding: 20px;
             border-radius: 5px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            max-width: 400px;
+            max-width: 500px;
             margin: 0 auto;
         }
 
@@ -33,7 +33,7 @@
         }
 
         input[type="number"] {
-            width: calc(100% - 20px);
+            width: calc(100% - 22px);
             padding: 10px;
             margin-bottom: 15px;
             border: 1px solid #ddd;
@@ -49,7 +49,7 @@
             color: white;
             font-size: 16px;
             cursor: pointer;
-            margin-bottom: 10px;  /* 添加底部间距 */
+            margin-bottom: 10px;  /* Added bottom margin */
         }
 
         button:hover {
@@ -70,55 +70,65 @@
             border-radius: 4px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
+
+        .error {
+            color: red;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .spinner {
+            border: 8px solid #f3f3f3; /* Light grey */
+            border-top: 8px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
     </style>
 </head>
 <body>
     <h1>Generate Linear Regression Plot</h1>
-    <form id="plot-form">
+    <form id="plot-form" method="POST" action="/">
         <label for="a">Slope (a):</label>
-        <input type="number" step="any" id="a" name="a" required>
-
-        <label for="b">Intercept (b):</label>
-        <input type="number" step="any" id="b" name="b" required>
+        <input type="number" step="any" id="a" name="a" value="1" required>
 
         <label for="noise">Noise Level:</label>
-        <input type="number" step="any" id="noise" name="noise" required>
+        <input type="number" step="any" id="noise" name="noise" value="10" required>
 
         <label for="num_points">Number of Points:</label>
-        <input type="number" id="num_points" name="num_points" required>
+        <input type="number" id="num_points" name="num_points" value="600" min="1" required>
 
         <button type="submit">Generate Plot</button>
-        <button type="button" onclick="location.reload();">Refresh</button> <!-- 重新整理按钮 -->
+        <button type="button" onclick="location.reload();">Refresh</button> <!-- Refresh button -->
     </form>
 
-    <h3>Generated Plot:</h3>
-    <img id="regression-plot" src="" alt="Linear Regression Plot" style="display:none;">
+    <div class="error" id="error-message">
+        {% if error %}
+            {{ error }}
+        {% endif %}
+    </div>
+
+    {% if plot %}
+        <h3>Generated Plot:</h3>
+        <img src="data:image/png;base64,{{ plot }}" alt="Linear Regression Plot">
+    {% endif %}
 
     <script>
-        document.getElementById('plot-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const a = document.getElementById('a').value;
-            const b = document.getElementById('b').value;
-            const noise = document.getElementById('noise').value;
-            const num_points = document.getElementById('num_points').value;
-
-            const response = await fetch('/generate_plot', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: `a=${a}&b=${b}&noise=${noise}&num_points=${num_points}`
-            });
-
-            if (response.ok) {
-                const imageUrl = 'static/linear_regression_plot.png';
-                document.getElementById('regression-plot').src = imageUrl;
-                document.getElementById('regression-plot').style.display = 'block';
-            } else {
-                const errorData = await response.json();
-                alert(errorData.error);
-            }
-        };
+        // Optional: You can add client-side validations or enhancements here if needed.
     </script>
 </body>
 </html>
