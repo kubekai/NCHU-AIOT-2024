@@ -113,7 +113,6 @@
         <input type="number" id="num_points" name="num_points" value="600" min="1" required>
 
         <button type="submit">Generate Plot</button>
-        <button type="button" onclick="location.reload();">Refresh</button> <!-- Refresh button -->
     </form>
 
     <div class="error" id="error-message">
@@ -124,7 +123,7 @@
 
     {% if plot %}
         <h3>Generated Plot:</h3>
-        <img src="data:image/png;base64,{{ plot }}" alt="Linear Regression Plot">
+        <img id="plot-image" src="data:image/png;base64,{{ plot }}" alt="Linear Regression Plot">
     {% endif %}
 
     <script>
