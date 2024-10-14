@@ -27,9 +27,10 @@ def generate_data(a, num_points, noise):
     - x (np.ndarray): Independent variable values.
     - y (np.ndarray): Dependent variable values with noise.
     """
+    b = np.random.uniform(-10, 10)  # Random intercept between -10 and 10
     x = np.linspace(0, 10, num_points)
-    y = a * x + np.random.normal(1, noise, num_points) 
-    return x, y
+    y = a * x + b + np.random.normal(0, noise, num_points) 
+    return x, y, b  # Return b as well
 
 def perform_regression(x, y):
     """
@@ -47,7 +48,7 @@ def perform_regression(x, y):
     - r2 (float): R-squared score of the model.
     - y_pred (np.ndarray): Predicted y values from the model.
     """
-    model = LinearRegression()
+    model = LinearRegression(fit_intercept=True)  # Ensure intercept is estimated
     x_reshaped = x.reshape(-1, 1)
     model.fit(x_reshaped, y)
     y_pred = model.predict(x_reshaped)
@@ -55,7 +56,7 @@ def perform_regression(x, y):
     r2 = r2_score(y, y_pred)
     return model.coef_[0], model.intercept_, mse, r2, y_pred
 
-def create_plot(x, y, y_pred, a):
+def create_plot(x, y, y_pred, a, b):
     """
     CRISP-DM Step 5: Evaluation
     Creates a plot of the data points, regression line, and true line.
@@ -65,15 +66,16 @@ def create_plot(x, y, y_pred, a):
     - y (np.ndarray): Dependent variable values.
     - y_pred (np.ndarray): Predicted y values from regression.
     - a (float): True slope used in data generation.
+    - b (float): True intercept used in data generation.
 
     Returns:
     - plot_data (str): Base64-encoded PNG image of the plot.
     """
     with plot_lock:
-        plt.figure(figsize=(10, 10))
+        plt.figure(figsize=(10, 6))
         plt.scatter(x, y, color='blue', label='Data Points', alpha=0.6, s=10)  # Smaller points for clarity
         plt.plot(x, y_pred, color='red', label='Regression Line', linewidth=2)
-        plt.plot(x, a*x, color='green', linestyle='--', label=f'True Line (y = {a}x)', linewidth=2)
+        plt.plot(x, a * x + b, color='green', linestyle='--', label=f'True Line (y = {a}x + {b})', linewidth=2)
         plt.xlabel('X')
         plt.ylabel('Y')
         plt.title('Linear Regression Result')
@@ -97,12 +99,8 @@ def index():
     - Steps 3-6 are handled within helper functions and this route.
     """
     if request.method == 'POST':
-        # Step 1: Business Understanding
-        # The objective is to generate a linear regression plot based on user inputs.
-
         try:
             # Step 2: Data Understanding
-            # Collect input parameters from the user
             a = float(request.form['a'])           # Slope
             noise = float(request.form['noise'])   # Noise level
             num_points = int(request.form['num_points'])  # Number of data points
@@ -118,16 +116,15 @@ def index():
             return render_template('index.html', error='Invalid input. Please ensure all inputs are numeric.')
 
         # Step 3: Data Preparation
-        x, y = generate_data(a, num_points, noise)
+        x, y, b = generate_data(a, num_points, noise)
 
         # Step 4: Modeling
         slope, intercept, mse, r2, y_pred = perform_regression(x, y)
 
         # Step 5: Evaluation
-        plot_data = create_plot(x, y, y_pred, a)
+        plot_data = create_plot(x, y, y_pred, a, b)
 
         # Step 6: Deployment
-        # Render the template with the generated plot
         return render_template('index.html', plot=plot_data)
 
     # For GET requests, simply render the form
