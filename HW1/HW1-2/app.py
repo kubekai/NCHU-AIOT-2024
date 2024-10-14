@@ -11,8 +11,8 @@ import base64
 from io import BytesIO
 
 app = Flask(__name__)
-DATA_FILE_PATH = './HW1-2/data.csv'
-UPLOAD_FOLDER = os.path.abspath('./HW1-2/uploads')  # Use absolute path
+DATA_FILE_PATH = './HW1/HW1-2/data.csv'
+UPLOAD_FOLDER = os.path.abspath('./HW1/HW1-2/uploads')  # Use absolute path
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.route('/')
