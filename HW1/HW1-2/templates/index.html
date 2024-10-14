@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Prediction and Funnel Chart</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f4f4f4; /* Light background for contrast */
+        }
+        h1 {
+            color: #333; /* Darker heading color */
+        }
+        form {
+            margin-bottom: 30px;
+            background-color: #fff; /* White background for form */
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        label {
+            margin-right: 10px;
+        }
+        select, button {
+            padding: 5px 10px;
+            margin-right: 20px;
+        }
+        .charts {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap; /* Allow wrapping of charts */
+            margin-bottom: 20px;
+        }
+        .chart-container {
+            flex: 1 1 45%; /* Flex-grow, flex-shrink, and basis for two images per row */
+            margin: 10px; /* Add space between charts */
+            max-width: 45%; /* Ensure charts don't exceed this width */
+            background-color: #fff; /* White background for chart containers */
+            border-radius: 8px; /* Rounded corners */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Add shadow */
+            padding: 10px; /* Padding for contents */
+        }
+        img {
+            max-width: 100%; /* Allow images to fit properly */
+            height: auto;
+            border-radius: 8px; /* Rounded corners for images */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Add shadow to images */
+        }
+        .metrics {
+            font-size: 16px;
+            background-color: #fff; /* White background for metrics */
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px; /* Space below metrics */
+        }
+        h2 {
+            color: #444; /* Slightly lighter color for subheadings */
+        }
+        button.refresh {
+            background-color: #007BFF; /* Primary button color */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button.refresh:hover {
+            background-color: #0056b3; /* Darker shade on hover */
+        }
+    </style>
+</head>
+<body>
+    <h1>Prediction and Funnel Chart Generation</h1>
+    <form id="predict-form">
+        <label for="model_type">Select Model Type:</label>
+        <select id="model_type" name="model_type">
+            <option value="AR">Autoregressive Model (AR)</option>
+            <option value="ML">Multiple Linear Regression Model (ML)</option>
+        </select>
+        <button type="submit">Predict</button>
+    </form>
+    
+    <button class="refresh" onclick="location.reload();">Refresh</button>
+
+    <h2>Charts</h2>
+    <div class="charts">
+        <div class="chart-container">
+            <h3>AR Prediction Chart</h3>
+            <img id="plot_image_ar" src="" alt="AR Prediction Chart" style="display:none;">
+        </div>
+        <div class="chart-container">
+            <h3>ML Prediction Chart</h3>
+            <img id="plot_image_ml" src="" alt="ML Prediction Chart" style="display:none;">
+        </div>
+        <div class="chart-container">
+            <h3>AR Funnel Chart</h3>
+            <div id="funnel_chart_ar" style="width: 100%; height: 300px;"></div> <!-- Set height for funnel chart -->
+        </div>
+        <div class="chart-container">
+            <h3>ML Funnel Chart</h3>
+            <div id="funnel_chart_ml" style="width: 100%; height: 300px;"></div> <!-- Set height for funnel chart -->
+        </div>
+    </div>
+
+    <h3>Evaluation Metrics</h3>
+    <div class="metrics">
+        <p id="mse_ar"></p>
+        <p id="r2_ar"></p>
+        <p id="mse_ml"></p>
+        <p id="r2_ml"></p>
+    </div>
+
+    <script>
+        document.getElementById('predict-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const model_type = document.getElementById('model_type').value;
+
+            const formData = new FormData();
+            formData.append('model_type', model_type);
+
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Handling Autoregressive Model (AR)
+                if (model_type === 'AR' && data.plot_url_ar) {
+                    document.getElementById('plot_image_ar').src = 'data:image/png;base64,' + data.plot_url_ar;
+                    document.getElementById('plot_image_ar').style.display = 'block'; // Show the image
+                    document.getElementById('mse_ar').innerText = 'MSE: ' + data.mse_ar;
+                    document.getElementById('r2_ar').innerText = 'R^2: ' + data.r2_ar;
+
+                    // Draw funnel chart for AR
+                    if (data.funnel_data_ar) {
+                        const funnelData = data.funnel_data_ar;
+                        const trace = {
+                            type: 'funnel',
+                            x: funnelData.values,
+                            y: funnelData.stages,
+                            textinfo: "value+percent previous",
+                            marker: {
+                                color: 'rgba(128, 0, 128, 0.6)'
+                            }
+                        };
+                        const layout = {
+                            title: `Funnel Chart - ${funnelData.model_type} (Last ${funnelData.recent_days} Days)`,
+                            yaxis: { automargin: true }
+                        };
+                        Plotly.newPlot('funnel_chart_ar', [trace], layout);
+                    }
+                }
+
+                // Handling Multiple Linear Regression Model (ML)
+                if (model_type === 'ML' && data.plot_url_ml) {
+                    document.getElementById('plot_image_ml').src = 'data:image/png;base64,' + data.plot_url_ml;
+                    document.getElementById('plot_image_ml').style.display = 'block'; // Show the image
+                    document.getElementById('mse_ml').innerText = 'MSE: ' + data.mse_ml;
+                    document.getElementById('r2_ml').innerText = 'R^2: ' + data.r2_ml;
+
+                    // Draw funnel chart for ML
+                    if (data.funnel_data_ml) {
+                        const funnelData = data.funnel_data_ml;
+                        const trace = {
+                            type: 'funnel',
+                            x: funnelData.values,
+                            y: funnelData.stages,
+                            textinfo: "value+percent previous",
+                            marker: {
+                                color: 'rgba(0, 128, 0, 0.6)'
+                            }
+                        };
+                        const layout = {
+                            title: `Funnel Chart - ${funnelData.model_type} (Last ${funnelData.recent_days} Days)`,
+                            yaxis: { automargin: true }
+                        };
+                        Plotly.newPlot('funnel_chart_ml', [trace], layout);
+                    }
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    </script>
+</body>
+</html>
