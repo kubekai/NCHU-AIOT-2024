@@ -1,2 +1,4 @@
-# Result
-![alt text](process-pics/Result1.png)
+# Result : confusion matrix
+![alt text](Result1.png)
+# Result : Submissions
+![alt text](Result2.png)
