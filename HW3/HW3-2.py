@@ -1,54 +1,70 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from sklearn.datasets import make_circles
-from sklearn.svm import SVC
 import streamlit as st
-from sklearn.preprocessing import StandardScaler
-from matplotlib import cm
+from mpl_toolkits.mplot3d import Axes3D
+from sklearn.svm import LinearSVC
 
-# Step 1: Generate Circular Dataset
-X, y = make_circles(n_samples=300, factor=0.5, noise=0.05)
-scaler = StandardScaler()
-X = scaler.fit_transform(X)
+# Streamlit App
+st.title('3D Scatter Plot with Separating Hyperplane')
 
-# Step 2: Train SVM with RBF Kernel
-svm_rbf = SVC(kernel='rbf', C=1, gamma='scale')
-svm_rbf.fit(X, y)
+# Sidebar for adjusting distance threshold
+distance_threshold = st.slider('Distance Threshold', min_value=0.1, max_value=10.0, value=4.0, step=0.1)
 
-# Step 3: Prepare Grid for Decision Boundary Visualization
-xx, yy = np.meshgrid(np.linspace(-2, 2, 100), np.linspace(-2, 2, 100))
-grid_points = np.c_[xx.ravel(), yy.ravel()]
-decision_scores = svm_rbf.decision_function(grid_points)
-zz = decision_scores.reshape(xx.shape)
+# Generate data and perform calculations
+np.random.seed(0)
+num_points = 600
+mean = 0
+variance = 10
 
-# Step 4: Streamlit App
-st.title("2D SVM with RBF Kernel - 3D Decision Boundary Visualization")
-st.write("This app shows a 3D visualization of an SVM classification decision boundary on a circularly distributed 2D dataset using an RBF kernel.")
+# Generate data for x1 and x2 from normal distribution
+x1 = np.random.normal(mean, np.sqrt(variance), num_points)
+x2 = np.random.normal(mean, np.sqrt(variance), num_points)
 
-# Plot 3D visualization
+# Calculate distances from the origin (0, 0)
+distances = np.sqrt(x1**2 + x2**2)
+
+# Assign labels based on the distance threshold
+Y = np.where(distances < distance_threshold, 0, 1)
+
+# Gaussian function for third dimension (x3)
+def gaussian_function(x1, x2):
+    return np.exp(-0.1 * (x1**2 + x2**2))
+
+# Calculate x3 values using the Gaussian function
+x3 = gaussian_function(x1, x2)
+
+# Stack x1, x2, x3 to form the feature matrix X
+X = np.column_stack((x1, x2, x3))
+
+# Train a Linear SVM model
+clf = LinearSVC(random_state=0, max_iter=10000)
+clf.fit(X, Y)
+
+# Extract model coefficients and intercept
+coef = clf.coef_[0]
+intercept = clf.intercept_
+
+# Create 3D scatter plot
 fig = plt.figure(figsize=(10, 8))
-ax = fig.add_subplot(111, projection='3d')  
+ax = fig.add_subplot(111, projection='3d')
 
-# Plot decision surface
-ax.plot_surface(xx, yy, zz, rstride=1, cstride=1, color='blue', alpha=0.3, edgecolor='none', cmap=cm.coolwarm)
+# Plot the data points for class Y=0 and Y=1
+ax.scatter(x1[Y==0], x2[Y==0], x3[Y==0], c='blue', marker='o', label='Y=0')
+ax.scatter(x1[Y==1], x2[Y==1], x3[Y==1], c='red', marker='s', label='Y=1')
 
-# Plot the data points in 3D
-ax.scatter(X[y == 0, 0], X[y == 0, 1], -0.5, color='red', label="Class 0", s=50)
-ax.scatter(X[y == 1, 0], X[y == 1, 1], -0.5, color='green', label="Class 1", s=50)
+# Labels and title
+ax.set_xlabel('x1')
+ax.set_ylabel('x2')
+ax.set_zlabel('x3')
+ax.set_title('3D Scatter Plot with Y Color and Separating Hyperplane')
 
-# Highlight support vectors
-support_vectors = svm_rbf.support_vectors_
-ax.scatter(support_vectors[:, 0], support_vectors[:, 1], -0.5, s=100, facecolors='none', edgecolors='k', label="Support Vectors")
+# Plot the separating hyperplane using meshgrid
+xx, yy = np.meshgrid(np.linspace(min(x1), max(x1), 10), np.linspace(min(x2), max(x2), 10))
+zz = (-coef[0] * xx - coef[1] * yy - intercept) / coef[2]
 
-# Set labels
-ax.set_xlabel("Feature 1")
-ax.set_ylabel("Feature 2")
-ax.set_zlabel("Decision Function Value")
-ax.set_title("SVM with RBF Kernel (3D Decision Boundary)")
+# Plot the hyperplane surface
+ax.plot_surface(xx, yy, zz, color='gray', alpha=0.5)
 
-# Add legend
+# Display the plot using Streamlit
 ax.legend()
-
-# Display the plot in Streamlit
 st.pyplot(fig)
