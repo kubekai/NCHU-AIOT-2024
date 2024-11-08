@@ -5,20 +5,21 @@ from mpl_toolkits.mplot3d import Axes3D
 from sklearn.svm import LinearSVC
 
 # Streamlit App
-st.title('3D Scatter Plot with Separating Hyperplane')
+st.title('3D Scatter Plot with Elliptical Distribution and Separating Hyperplane')
 
-# Sidebar for adjusting distance threshold
+# Sidebar for adjusting distance threshold, semi-major axis, and semi-minor axis
 distance_threshold = st.slider('Distance Threshold', min_value=0.1, max_value=10.0, value=4.0, step=0.1)
+semi_major_axis = st.slider('Semi-Major Axis (x1 direction)', min_value=1.0, max_value=10.0, value=4.0, step=0.1)
+semi_minor_axis = st.slider('Semi-Minor Axis (x2 direction)', min_value=1.0, max_value=10.0, value=4.0, step=0.1)
 
 # Generate data and perform calculations
 np.random.seed(0)
 num_points = 600
 mean = 0
-variance = 10
 
-# Generate data for x1 and x2 from normal distribution
-x1 = np.random.normal(mean, np.sqrt(variance), num_points)
-x2 = np.random.normal(mean, np.sqrt(variance), num_points)
+# Generate data for x1 and x2 with adjustable semi-major and semi-minor axes
+x1 = np.random.normal(mean, semi_major_axis, num_points)
+x2 = np.random.normal(mean, semi_minor_axis, num_points)
 
 # Calculate distances from the origin (0, 0)
 distances = np.sqrt(x1**2 + x2**2)
@@ -56,9 +57,9 @@ ax.scatter(x1[Y==1], x2[Y==1], x3[Y==1], c='red', marker='s', label='Y=1')
 ax.set_xlabel('x1')
 ax.set_ylabel('x2')
 ax.set_zlabel('x3')
-ax.set_title('3D Scatter Plot with Y Color and Separating Hyperplane')
+ax.set_title('3D Scatter Plot with Elliptical Distribution and Separating Hyperplane')
 
-# Plot the separating hyperplane using meshgrid
+# Create a meshgrid to plot the separating hyperplane
 xx, yy = np.meshgrid(np.linspace(min(x1), max(x1), 10), np.linspace(min(x2), max(x2), 10))
 zz = (-coef[0] * xx - coef[1] * yy - intercept) / coef[2]
 
