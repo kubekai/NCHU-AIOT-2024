@@ -3,7 +3,7 @@
 ![alt text](Result5-1-2.png)  
 ![alt text](Result5-1-3.png)  
 chat-gpt prompt:https://chatgpt.com/share/675bf745-ab14-8011-b13d-40d38b392b18
-# HW5-2 : 
+# HW5-2 : 比較 DNN 和 CNN 的準確率和實際預測結果
 ![alt text](Result5-2-1.png)  
 ![alt text](Result5-2-2.png)  
 ![alt text](Result5-2-3.png)  
