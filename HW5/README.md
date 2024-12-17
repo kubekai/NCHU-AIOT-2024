@@ -1,4 +1,4 @@
-# HW5-1 : 
+# HW5-1 : 利用Tensor Board 來記錄訓練的過程，以及最終準確率
 ![alt text](Result5-1-1.png)  
 ![alt text](Result5-1-2.png)  
 ![alt text](Result5-1-3.png)  
